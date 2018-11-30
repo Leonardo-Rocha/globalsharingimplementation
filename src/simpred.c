@@ -3,7 +3,7 @@
 * Gabriel da Silva Chiquetto e Leonardo Cavalcante Almeida Rocha
 * Simulador de predição de Desvios Condicionais
 * Professora: Nahri Balesdent Moreano
-* Compilar utilizando gcc simpred.c -o simpred -std=c99 -pedantic -Wall -lm
+* Compilar utilizando?
 *
 */
 #include <math.h>
@@ -108,7 +108,7 @@ int main(int argc, char const *argv[])
 void desaloca(BPB * buffer){
 	for (int i = buffer->size - 1; i >=0 ; --i)
 	{
-        if(buffer != NULL)
+        if(buffer)
         {
 		    free(&buffer->linha[i]);
         }
@@ -232,7 +232,7 @@ float read_trace_cr(FILE *trace, int num_linhas_BPB, int m, int n)
 	for(int j = 0; j < (2<<(m-1)); j++){
         buffers_cr[j] = cria_BPB(num_linhas_BPB);
         printf("buffers_cr[%d]->size = %d\n", j, buffers_cr[j]->size);
-        int teste = testa_BPB(buffers_cr[j],num_linhas_BPB);
+        //int teste = testa_BPB(buffers_cr[j],num_linhas_BPB);
     }
     while(!feof(trace))
     {	
