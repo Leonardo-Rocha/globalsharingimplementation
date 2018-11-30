@@ -10,6 +10,15 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
+
+//Stat
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+
+extern int errno;
 
 // Estrutura de dados que guarda a predição
 typedef struct 
@@ -58,14 +67,21 @@ int pred_2b(unsigned int address, char verify, BPB * buffer);
 // Função que faz a predição de desvio usando correlação.
 int pred_cr(unsigned int address, char verify, BPB * buffer, int m, int n_bits, _bool * branch_h);
 
-int main(int argc, char const *argv[])
+/**
+ * Abre o arquivo com thread safe
+*/ 
+FILE* openFile(char* path, char* flag);
+
+int main(int argc, char **argv)
 {
 	int num_linhas_BPB;
 	int m;
 	int n;
 	float erro;
 
-	FILE *trace = fopen(argv[2], "rb");
+	FILE *trace = NULL;
+
+	trace = openFile( argv[2], "rb");
 
 	if(strcmp(argv[1], "nt") == 0)
 	{	
@@ -103,6 +119,20 @@ int main(int argc, char const *argv[])
 	printf("taxa de acertos = %%%.2f\n", 100-erro*100);
 
 	return 0;
+}
+
+FILE* openFile(char* path, char* flag)
+{
+
+	FILE* fp = fopen(path, flag);
+	if(fp == NULL)
+	{
+		int errnumb = errno;
+		fprintf(stderr, "Value of errno: %d\n", errno);
+      	perror("Error printed by perror");
+      	fprintf(stderr, "Error opening file: %s\n", strerror( errnumb ));
+	}
+	return fp;
 }
 
 void desaloca(BPB * buffer){
@@ -226,29 +256,25 @@ float read_trace_cr(FILE *trace, int num_linhas_BPB, int m, int n)
     int erro = 0;
     int i = 0;
 	_bool * branch_historico = (_bool *) calloc(1, m*sizeof(_bool));
-    BPB ** buffers_cr =  (BPB **) malloc(m*sizeof(BPB *));
+    BPB** buffers_cr = (BPB**) malloc((2<<(m-1)) * sizeof(BPB*));
 	unsigned int cr_address = 0;
-	
+		
 	for(int j = 0; j < (2<<(m-1)); j++){
-        buffers_cr[j] = cria_BPB(num_linhas_BPB);
-        printf("buffers_cr[%d]->size = %d\n", j, buffers_cr[j]->size);
+        buffers_cr[j] = cria_BPB(1);
+        printf("%d -> buffers_cr[%d]->size = %d\n",__LINE__, j, buffers_cr[j]->size);
         //int teste = testa_BPB(buffers_cr[j],num_linhas_BPB);
     }
     while(!feof(trace))
-    {	
-    	//printf("\n dentro do while: buffers_cr[0] = %d\n", buffers_cr[0]->size);
+    {
     	cr_address = 0;
     	for (int j = 0; j < m; ++j)
     	{
     		cr_address += branch_historico[j] << j; 
     	}
     	printf("cr_address = %d", cr_address);
-    	buffers_cr[cr_address]->size = num_linhas_BPB; 
-        fscanf(trace, "%u %c", &Address, &Desvio);
-        //printf("com o cr_address certo : buffers_cr[%d] = %d\n", cr_address, buffers_cr[cr_address]->size);
+        fscanf(trace, "%u %c", &Address, &Desvio);        
         erro += pred_cr(Address, Desvio, buffers_cr[cr_address], m, n, branch_historico); 
-        i++;
-        // printf("Address = %u, D = %c\n", Address, Desvio);
+        i++;   
     }
      for (int j = m; j >= 0; --j)
     {
@@ -335,7 +361,8 @@ int pred_cr(unsigned int address, char verify, BPB * buffer, int m, int n_bits, 
 	//printf("\nmax = %d, threshold = %d\n", max, threshold);
 	//printf("ACESSOU a pred_cr\n");
 	//printf("Address = %d\n", address);
-	if( (verify == 'T') != ((buffer->linha[address].predict) >= threshold))
+
+	if((verify == 'T') != ((buffer->linha[address].predict) >= threshold))
 	{
 		ret = 1;
 	}
