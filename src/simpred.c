@@ -85,19 +85,19 @@ int main(int argc, char **argv)
 
 	if(strcmp(argv[1], "nt") == 0)
 	{	
-		//printf("\nnt\n");
+		printf("\nnt\n");
 		erro = read_trace_nt(trace);
 
 	}else if(strcmp(argv[1], "1b") == 0)
 	{	
 		num_linhas_BPB = strtoll(argv[3], NULL, 10);
-		//printf("\n1b\n");
+		printf("\n1b\n");
 		erro = read_trace_1b(trace, num_linhas_BPB);
 
 	}else if(strcmp(argv[1], "2b") == 0)
 	{	
 		num_linhas_BPB = strtoll(argv[3], NULL, 10);
-		//printf("\n2b\n");
+		printf("\n2b\n");
 		erro = read_trace_2b(trace, num_linhas_BPB);
 
 	}else if(strcmp(argv[1], "cr") == 0)
@@ -105,8 +105,8 @@ int main(int argc, char **argv)
 		num_linhas_BPB = strtoll(argv[3], NULL, 10);
 		m = strtol(argv[4], NULL, 10);
 		n = strtol(argv[5], NULL, 10);
-		//printf("m = %d, n = %d\n", m, n);
-		//printf("\ncr\n");
+		printf("m = %d, n = %d\n", m, n);
+		printf("\ncr\n");
 		erro = read_trace_cr(trace, num_linhas_BPB, m, n);
 
 	}else
@@ -114,6 +114,7 @@ int main(int argc, char **argv)
 		printf("\nTécnica de predição inválida.\n");
 		return 0;
 	}
+
 	//printf("num_linhas_BPB = %d\n", num_linhas_BPB);
 	printf("taxa de acertos = %%%.2f\n", 100-erro*100);
 
@@ -134,19 +135,12 @@ FILE* openFile(char* path, char* flag)
 	return fp;
 }
 
-//TODO corrigir desaloca
 void desaloca(BPB * buffer){
-	if(buffer != NULL)
-	{	
-		for (int i = buffer->size - 1; i >= 0 ; i--)
-		{	
-        	if(&(buffer->linha[i]) != NULL)
-        	{	
-		    	free(&(buffer->linha[i]));
-        	}
-    	}
-    	free(buffer);
-	}
+    if(buffer){
+        free(buffer->linha);
+        free(buffer);        
+    }
+            
 }
 
 BPB* cria_BPB(int num_linhas_BPB)
@@ -260,8 +254,8 @@ float read_trace_cr(FILE *trace, int num_linhas_BPB, int m, int n)
 	unsigned int cr_address = 0;
 		
 	for(int j = 0; j < (2<<(m-1)); j++){
-        buffers_cr[j] = cria_BPB(1);
-        //printf("%d -> buffers_cr[%d]->size = %d\n",__LINE__, j, buffers_cr[j]->size);
+        buffers_cr[j] = cria_BPB(num_linhas_BPB);
+        printf("%d -> buffers_cr[%d]->size = %d\n",__LINE__, j, buffers_cr[j]->size);
         //int teste = testa_BPB(buffers_cr[j],num_linhas_BPB);
     }
     while(!feof(trace))
@@ -271,12 +265,12 @@ float read_trace_cr(FILE *trace, int num_linhas_BPB, int m, int n)
     	{
     		cr_address += branch_historico[j] << j; 
     	}
-    	//printf("cr_address = %d", cr_address);
+    	printf("cr_address = %d;", cr_address);
         fscanf(trace, "%u %c", &Address, &Desvio);        
         erro += pred_cr(Address, Desvio, buffers_cr[cr_address], m, n, branch_historico); 
         i++;   
     }
-     for (int j = m; j >= 0; --j)
+     for (int j = (2<<(m-1))-1; j >= 0; --j)
     {
     	desaloca(buffers_cr[j]);
     }
@@ -357,9 +351,11 @@ int pred_cr(unsigned int address, char verify, BPB * buffer, int m, int n_bits, 
 	int ret = 0;
 	//printf("Buffer->size = %d\n", buffer->size);
 	address = calcula_Address(address, buffer->size);
-	int max = (2<<(n_bits-1)) - 1, min = 0, threshold = 2 << (n_bits-2);
+	int max = (2<<(n_bits-1)) - 1, min = 0, threshold = (2 << (n_bits-1))/2;
 	//printf("\nmax = %d, threshold = %d\n", max, threshold);
-
+	//printf("ACESSOU a pred_cr\n");
+	//printf("Address = %d\n", address);
+	printf(" address = %d;predict(%d) => %d; verify = %d\n",address,(buffer->linha[address].predict),((buffer->linha[address].predict) >= threshold),(verify == 'T') );
 	if((verify == 'T') != ((buffer->linha[address].predict) >= threshold))
 	{
 		ret = 1;
@@ -368,11 +364,13 @@ int pred_cr(unsigned int address, char verify, BPB * buffer, int m, int n_bits, 
 	if((verify == 'T') && ((buffer->linha[address].predict) != max))
 	{
 		(buffer->linha[address].predict)++;
+		printf("Incrementou\n");
 	}
 
 	if((verify == 'N') && ((buffer->linha[address].predict) != min))
 	{
 		(buffer->linha[address].predict)--;
+		printf("Decrementou\n");
 	}
 
 	for(int j = m-2; j >= 0; j--)
