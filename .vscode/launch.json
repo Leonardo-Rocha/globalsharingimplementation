@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/simpred",
-            "args": ["cr", "trace_pequeno.trc","1","3","2"],
+            "args": ["cr", "bin/trace_pequeno.trc","1","3","2"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
