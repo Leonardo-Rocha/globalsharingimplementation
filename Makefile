@@ -14,11 +14,11 @@ all:  $(MAIN)
 
 $(MAIN): $(SOURCE)
 	
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(MAIN) $^
+	$(CC) $^ $(CFLAGS) -o $(MAIN) $(LDFLAGS) 
 
 static: $(SOURCE)
 
-	$(CC) $(CFLAGS) -o $(MAIN) -static $^
+	$(CC) $^ $(CFLAGS) -o $(MAIN) -static 
 
 clean:
 	rm -f $(MAIN) *.o
