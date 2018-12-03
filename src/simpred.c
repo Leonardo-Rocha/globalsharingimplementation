@@ -3,7 +3,7 @@
 * Gabriel da Silva Chiquetto e Leonardo Cavalcante Almeida Rocha
 * Simulador de predição de Desvios Condicionais
 * Professora: Nahri Balesdent Moreano
-* Compilar utilizando?
+* Compilar utilizando gcc simpred.c -o simpred -Wall -std=c99 -pedantic -lm
 *
 */
 #include <math.h>
