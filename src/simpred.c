@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 	}
 
 	//printf("num_linhas_BPB = %d\n", num_linhas_BPB);
-	printf("taxa de acertos = %%%.2f\n", 100-erro*100);
+	printf("taxa_de_acertos\t%%%.2f\n", 100-erro*100);
 
 	return 0;
 }
