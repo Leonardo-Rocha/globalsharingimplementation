@@ -62,7 +62,7 @@ int pred_nt(char verify);
 int pred_1b(unsigned int address, char verify, BPB * buffer);
 
 // Função que faz a predição de desvio usando BPB de 2 bits
-int pred_2b(unsigned int address, char verify, BPB * buffer);
+int pred_2b(unsigned int address, char verify, BPB * buffer, int m, _bool * branch_historico);
 
 // Função que faz a predição de desvio usando correlação.
 int pred_cr(unsigned int address, char verify, BPB * buffer, int m, int n_bits, _bool * branch_h);
@@ -85,19 +85,17 @@ int main(int argc, char **argv)
 
 	if(strcmp(argv[1], "nt") == 0)
 	{	
-		printf("\nnt\n");
 		erro = read_trace_nt(trace);
 
 	}else if(strcmp(argv[1], "1b") == 0)
 	{	
 		num_linhas_BPB = strtoll(argv[3], NULL, 10);
-		printf("\n1b\n");
 		erro = read_trace_1b(trace, num_linhas_BPB);
 
 	}else if(strcmp(argv[1], "2b") == 0)
 	{	
 		num_linhas_BPB = strtoll(argv[3], NULL, 10);
-		printf("\n2b\n");
+
 		erro = read_trace_2b(trace, num_linhas_BPB);
 
 	}else if(strcmp(argv[1], "cr") == 0)
@@ -105,8 +103,6 @@ int main(int argc, char **argv)
 		num_linhas_BPB = strtoll(argv[3], NULL, 10);
 		m = strtol(argv[4], NULL, 10);
 		n = strtol(argv[5], NULL, 10);
-		printf("m = %d, n = %d\n", m, n);
-		printf("\ncr\n");
 		erro = read_trace_cr(trace, num_linhas_BPB, m, n);
 
 	}else
@@ -141,6 +137,17 @@ void desaloca(BPB * buffer){
         free(buffer);        
     }
             
+}
+
+void print_buffers(BPB ** buffers, int m){
+	for (int i = 0; i < 2<<(m-1); ++i)
+	{
+		for (int j = 0; j < buffers[i]->size; ++j)
+		{
+			printf("%d\t",buffers[i]->linha[j].predict );
+		}
+		printf("\n");
+	}
 }
 
 BPB* cria_BPB(int num_linhas_BPB)
@@ -184,6 +191,7 @@ unsigned int calcula_Address(unsigned int Address, int size)
 
 float read_trace_nt(FILE *trace)
 {
+	int temp_erro;
 	char Desvio;
 	unsigned int Address;
 	int i = 0;
@@ -193,18 +201,21 @@ float read_trace_nt(FILE *trace)
 	while(!feof(trace))// && i < 30)
 	{	
 		fscanf(trace, "%u %c", &Address, &Desvio);
-		erro += pred_nt(Desvio); 
+		temp_erro = pred_nt(Desvio); 
+		erro += temp_erro;
 		i++;
 		if(Desvio == 'T') N++;
 
 		// printf("Address = %u, D = %c\n", Address, Desvio);
 	}
+	erro -= temp_erro;
 
-	return ((float)--erro)/((float)--i);
+	return ((float)erro)/((float)--i);
 }
 
 float read_trace_1b(FILE *trace, int num_linhas_BPB)
 {
+	int temp_erro;
 	char Desvio;
 	unsigned int Address;
 	int i = 0;
@@ -215,16 +226,19 @@ float read_trace_1b(FILE *trace, int num_linhas_BPB)
 	while(!feof(trace))// && i < 30)
 	{	
 		fscanf(trace, "%u %c", &Address, &Desvio);
-		erro += pred_1b(Address, Desvio, BPB); 
+		temp_erro = pred_1b(Address, Desvio, BPB); 
+		erro += temp_erro; 
 		i++;
 		// printf("Address = %u, D = %c\n", Address, Desvio);
 	}
+	erro -= temp_erro;
 	desaloca(BPB);
 	return ((float)erro)/((float)--i);
 }
 
 float read_trace_2b(FILE *trace, int num_linhas_BPB)
-{
+{	
+	int temp_erro;
 	char Desvio;
 	unsigned int Address;
 	int erro = 0;
@@ -234,17 +248,19 @@ float read_trace_2b(FILE *trace, int num_linhas_BPB)
 	while(!feof(trace))// && i < 30)
 	{	
 		fscanf(trace, "%u %c", &Address, &Desvio);
-		erro += pred_2b(Address, Desvio, BPB); 
+		temp_erro = pred_2b(Address, Desvio, BPB, 0, NULL); 
+		erro +=  temp_erro;
 		i++;
 		// printf("Address = %u, D = %c\n", Address, Desvio);
 	}
+	erro -= temp_erro;
 	desaloca(BPB);
 	return ((float)erro)/((float)--i);
 }
 
 float read_trace_cr(FILE *trace, int num_linhas_BPB, int m, int n)
 {
-
+	int temp_erro;
     char Desvio;
 	unsigned int Address;
     int erro = 0;
@@ -255,26 +271,33 @@ float read_trace_cr(FILE *trace, int num_linhas_BPB, int m, int n)
 		
 	for(int j = 0; j < (2<<(m-1)); j++){
         buffers_cr[j] = cria_BPB(num_linhas_BPB);
-        printf("%d -> buffers_cr[%d]->size = %d\n",__LINE__, j, buffers_cr[j]->size);
         //int teste = testa_BPB(buffers_cr[j],num_linhas_BPB);
     }
-    while(!feof(trace))
+    while(!feof(trace)/*&& i<20*/)
     {
     	cr_address = 0;
+    	//printf("branch_historico =");
     	for (int j = 0; j < m; ++j)
     	{
-    		cr_address += branch_historico[j] << j; 
+    		cr_address += branch_historico[j] << j;
+    		//printf("%d ",branch_historico[j] ); 
     	}
-    	printf("cr_address = %d;", cr_address);
         fscanf(trace, "%u %c", &Address, &Desvio);        
-        erro += pred_cr(Address, Desvio, buffers_cr[cr_address], m, n, branch_historico); 
-        i++;   
-    }
+       	if(n==2){
+        	temp_erro = pred_2b(Address,Desvio, buffers_cr[cr_address],m, branch_historico);
+        }else{
+        	temp_erro = pred_cr(Address, Desvio, buffers_cr[cr_address], m, n, branch_historico);
+        } 
+        erro += temp_erro;         
+        i++;        
+	}
+    --i;
+    erro -= temp_erro;
      for (int j = (2<<(m-1))-1; j >= 0; --j)
     {
     	desaloca(buffers_cr[j]);
     }
-	return ((float)erro)/((float)--i);
+	return ((float)erro)/((float)i);
 }
 
 int pred_nt(char verify)
@@ -296,10 +319,18 @@ int pred_1b(unsigned int address, char verify, BPB * buffer)
 	return ret;
 }
 
-int pred_2b(unsigned int address, char verify, BPB * buffer)
+int pred_2b(unsigned int address, char verify, BPB * buffer,int m, _bool * branch_h)
 {
     address = calcula_Address(address, buffer->size);
-
+    if (branch_h != NULL)
+    {
+    	for(int j = m-2; j >= 0; j--)
+		{
+			branch_h[j+1] = branch_h[j];
+		}
+		branch_h[0] = (verify == 'T');
+    }
+    	
     switch(buffer->linha[address].predict)
     {
         case 0 :
@@ -349,28 +380,22 @@ int pred_2b(unsigned int address, char verify, BPB * buffer)
 int pred_cr(unsigned int address, char verify, BPB * buffer, int m, int n_bits, _bool * branch_h)
 {
 	int ret = 0;
-	//printf("Buffer->size = %d\n", buffer->size);
 	address = calcula_Address(address, buffer->size);
 	int max = (2<<(n_bits-1)) - 1, min = 0, threshold = (2 << (n_bits-1))/2;
-	//printf("\nmax = %d, threshold = %d\n", max, threshold);
-	//printf("ACESSOU a pred_cr\n");
-	//printf("Address = %d\n", address);
-	printf(" address = %d;predict(%d) => %d; verify = %d\n",address,(buffer->linha[address].predict),((buffer->linha[address].predict) >= threshold),(verify == 'T') );
 	if((verify == 'T') != ((buffer->linha[address].predict) >= threshold))
 	{
 		ret = 1;
 	}
-	//printf("PASSOU DO PRIMEIRO IF\n");
-	if((verify == 'T') && ((buffer->linha[address].predict) != max))
+
+	if((verify == 'T') && ((buffer->linha[address].predict) < max))
 	{
+
 		(buffer->linha[address].predict)++;
-		printf("Incrementou\n");
 	}
 
-	if((verify == 'N') && ((buffer->linha[address].predict) != min))
+	if((verify == 'N') && ((buffer->linha[address].predict) > min))
 	{
 		(buffer->linha[address].predict)--;
-		printf("Decrementou\n");
 	}
 
 	for(int j = m-2; j >= 0; j--)
